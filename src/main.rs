@@ -1,18 +1,12 @@
-use lili::Result;
-use tokio::process::Command;
+use lili::{
+    executor::{ExecOptions, Executor, WindowsExecutor},
+    Result,
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    
-    let output = Command::new("cmd")
-        .args(&["/C", "dir"])
-        .output()
-        .await
-        .expect("failed to execute process");
-
-    println!("status: {}", output.status);
-    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
-
+    let options = ExecOptions::new("syncthing");
+    let exec = WindowsExecutor::new(options);
+    exec.exec()?;
     Ok(())
 }

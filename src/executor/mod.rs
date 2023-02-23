@@ -5,9 +5,7 @@ mod macos;
 #[cfg(target_os = "windows")]
 mod windows;
 
-use crate::Result;
-
-pub use windows::WindowsExecutor;
+use crate::{async_trait, Result};
 
 pub struct ExecOptions {
     pub cmd: String,
@@ -33,9 +31,29 @@ impl ExecOptions {
     }
 }
 
+#[async_trait]
 pub trait Executor {
-    // buidler
-    fn new(options: ExecOptions) -> Self;
     // executor
-    fn exec(&self) -> Result<()>;
+    async fn exec(&self) -> Result<()>;
+}
+
+pub fn get_executor(options: ExecOptions) -> Box<dyn Executor + Send + Sync> {
+    #[cfg(target_os = "windows")]
+    return WindowExecutor::new(options);
+    #[cfg(target_os = "linux")]
+    get_linux_executor(options)
+}
+
+#[cfg(target_os = "windows")]
+fn get_windows_executor(options: ExecOptions) -> Box<dyn Executor> {
+    use self::windows::WindowsExecutor;
+    let we = WindowsExecutor::new(options);
+    Box::new(we)
+}
+
+#[cfg(target_os = "linux")]
+fn get_linux_executor(options: ExecOptions) -> Box<dyn Executor + Send + Sync> {
+    use self::linux::LinuxExecutor;
+    let le = LinuxExecutor::new(options);
+    Box::new(le)
 }

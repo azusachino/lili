@@ -6,11 +6,13 @@ pub struct WindowsExecutor {
     options: ExecOptions,
 }
 
-impl Executor for WindowsExecutor {
-    fn new(options: ExecOptions) -> Self {
+impl WindowsExecutor {
+    pub fn new(options: super::ExecOptions) -> Self {
         Self { options }
     }
+}
 
+impl Executor for WindowsExecutor {
     fn exec(&self) -> anyhow::Result<()> {
         let output = Command::new(self.options.cmd.to_owned())
             // .arg(self.options.args)

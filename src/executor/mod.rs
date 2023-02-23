@@ -6,28 +6,33 @@ mod macos;
 mod windows;
 
 use crate::{async_trait, Result};
+use serde::Deserialize;
+use std::{collections::HashMap, fs::OpenOptions, io::BufReader};
 
-pub struct ExecOptions {
+#[derive(Deserialize, Debug)]
+pub struct Process {
     pub cmd: String,
     pub args: Option<String>,
-    pub ignore_output: bool,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ExecOptions {
+    pub processes: HashMap<String, Process>,
+    pub ignore_output: Option<bool>,
 }
 
 impl ExecOptions {
-    pub fn new(cmd: &str) -> Self {
-        Self {
-            cmd: String::from(cmd),
-            args: None,
-            ignore_output: true,
-        }
-    }
+    pub fn from_cfg(cfg_path: &str) -> Self {
+        let f = OpenOptions::new()
+            .read(true)
+            .write(false)
+            .append(false)
+            .open(cfg_path)
+            .expect("fail to open config file");
 
-    pub fn args(&mut self, args: &str) {
-        self.args = Some(String::from(args));
-    }
+        let buf_r = BufReader::new(&f);
 
-    pub fn ignore_output(&mut self, ignore: bool) {
-        self.ignore_output = ignore;
+        serde_yaml::from_reader(buf_r).expect("fail to parse yaml")
     }
 }
 
@@ -37,23 +42,21 @@ pub trait Executor {
     async fn exec(&self) -> Result<()>;
 }
 
-pub fn get_executor(options: ExecOptions) -> Box<dyn Executor + Send + Sync> {
+pub fn get_executor(options: ExecOptions) -> Box<dyn Executor> {
     #[cfg(target_os = "windows")]
-    return WindowExecutor::new(options);
+    return get_windows_executor(options);
     #[cfg(target_os = "linux")]
-    get_linux_executor(options)
+    return get_linux_executor(options);
 }
 
 #[cfg(target_os = "windows")]
 fn get_windows_executor(options: ExecOptions) -> Box<dyn Executor> {
     use self::windows::WindowsExecutor;
-    let we = WindowsExecutor::new(options);
-    Box::new(we)
+    Box::new(WindowsExecutor::new(options))
 }
 
 #[cfg(target_os = "linux")]
-fn get_linux_executor(options: ExecOptions) -> Box<dyn Executor + Send + Sync> {
+fn get_linux_executor(options: ExecOptions) -> Box<dyn Executor> {
     use self::linux::LinuxExecutor;
-    let le = LinuxExecutor::new(options);
-    Box::new(le)
+    Box::new(LinuxExecutor::new(options))
 }

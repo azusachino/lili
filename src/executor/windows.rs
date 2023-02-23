@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use super::{ExecOptions, Executor};
+use super::{async_trait, ExecOptions, Executor};
 
 pub struct WindowsExecutor {
     options: ExecOptions,
@@ -12,11 +12,13 @@ impl WindowsExecutor {
     }
 }
 
+#[async_trait]
 impl Executor for WindowsExecutor {
-    fn exec(&self) -> anyhow::Result<()> {
-        let output = Command::new(self.options.cmd.to_owned())
+    async fn exec(&self) -> anyhow::Result<()> {
+        let output = Command::new("ls")
             // .arg(self.options.args)
             .output()?;
+        println!("{:?}", self.options);
 
         println!("status: {}", output.status);
         println!("stdout: {}", String::from_utf8_lossy(&output.stdout));

@@ -7,7 +7,12 @@ mod windows;
 
 use crate::{async_trait, Result};
 use serde::Deserialize;
-use std::{collections::HashMap, fs::OpenOptions, io::BufReader};
+use std::{
+    collections::HashMap,
+    fs::OpenOptions,
+    io::BufReader,
+    sync::{Arc, Mutex},
+};
 
 #[derive(Deserialize, Debug)]
 pub struct Process {
@@ -17,7 +22,7 @@ pub struct Process {
 
 #[derive(Deserialize, Debug)]
 pub struct ExecOptions {
-    pub processes: HashMap<String, Process>,
+    pub processes: Mutex<HashMap<String, Process>>,
     pub ignore_output: Option<bool>,
 }
 
@@ -42,21 +47,51 @@ pub trait Executor {
     async fn exec(&self) -> Result<()>;
 }
 
-pub fn get_executor(options: ExecOptions) -> Box<dyn Executor> {
+pub fn get_executor(options: Arc<ExecOptions>) -> Box<dyn Executor + Send + 'static> {
     #[cfg(target_os = "windows")]
-    return get_windows_executor(options);
+    {
+        use windows::WindowsExecutor;
+        Box::new(WindowsExecutor::new(options))
+    }
     #[cfg(target_os = "linux")]
-    return get_linux_executor(options);
+    {
+        use linux::LinuxExecutor;
+        Box::new(LinuxExecutor::new(options))
+    }
 }
 
-#[cfg(target_os = "windows")]
-fn get_windows_executor(options: ExecOptions) -> Box<dyn Executor> {
-    use self::windows::WindowsExecutor;
-    Box::new(WindowsExecutor::new(options))
-}
+#[cfg(test)]
+mod tests {
+    use super::Executor;
+    use anyhow::Result;
+    use async_trait::async_trait;
 
-#[cfg(target_os = "linux")]
-fn get_linux_executor(options: ExecOptions) -> Box<dyn Executor> {
-    use self::linux::LinuxExecutor;
-    Box::new(LinuxExecutor::new(options))
+    struct TestExecutor {
+        message: String,
+    }
+
+    #[async_trait]
+    impl Executor for TestExecutor {
+        async fn exec(&self) -> Result<()> {
+            println!("{}", self.message);
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test() {
+        let executor = TestExecutor {
+            message: "hello from tokio".to_owned(),
+        };
+
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_io()
+            .thread_name("tokio-")
+            .build()
+            .expect("fail to create tokio runtime");
+
+        rt.block_on(async move {
+            executor.exec().await.expect("fail to exec code");
+        });
+    }
 }

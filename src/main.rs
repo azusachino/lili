@@ -1,5 +1,6 @@
 use clap::Parser;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use lili::{
     executor::{get_executor, ExecOptions},
@@ -26,20 +27,10 @@ async fn main() -> Result<()> {
         .worker_threads(num_cpus::get())
         .build()?;
     let options = ExecOptions::from_cfg(&cfg_location);
-    
-    // Arc for Send, Mutex for Sync
-    let real_executor = Arc::new(Mutex::new(get_executor(options)));
+    let safe_op = Arc::new(options);
 
-    // tokio_thread_pool.spawn(async move {
-    //     let lock = real_executor.lock().expect("fail to get lock");
-    //     lock.exec().await;
-    // });
-
-    real_executor
-        .lock()
-        .expect("fail to get lock")
-        .exec()
-        .await?;
+    let real_executor = Arc::new(Mutex::new(get_executor(safe_op)));
+    real_executor.lock().await.exec().await?;
 
     Ok(())
 }

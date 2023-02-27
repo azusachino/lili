@@ -28,6 +28,7 @@ pub struct ExecOptions {
 
 impl ExecOptions {
     pub fn from_cfg(cfg_path: &str) -> Self {
+        let cfg_path = shellexpand::tilde(cfg_path).to_string();
         let f = OpenOptions::new()
             .read(true)
             .write(false)
@@ -62,6 +63,11 @@ pub fn get_executor(options: Arc<ExecOptions>) -> Box<dyn Executor + Send + 'sta
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        fs::OpenOptions,
+        io::{BufReader, Read},
+    };
+
     use super::Executor;
     use anyhow::Result;
     use async_trait::async_trait;
@@ -93,5 +99,22 @@ mod tests {
         rt.block_on(async move {
             executor.exec().await.expect("fail to exec code");
         });
+    }
+
+    #[test]
+    fn cfg() {
+        let path = "~/.lili/cfg.yaml";
+        let real_path = shellexpand::tilde(path);
+        let f = OpenOptions::new()
+            .read(true)
+            .write(false)
+            .append(false)
+            .open(real_path.to_string())
+            .expect("fail to open config file");
+
+        let mut buf = String::new();
+        let mut buf_r = BufReader::new(&f);
+        buf_r.read_to_string(&mut buf).expect("fail to read");
+        println!("{}", buf);
     }
 }

@@ -1,13 +1,14 @@
-use tokio::process::Command;
+use std::{process::Command, sync::Arc};
 
 use super::{async_trait, ExecOptions, Executor};
+use tokio::task;
 
 pub struct LinuxExecutor {
-    options: ExecOptions,
+    options: Arc<ExecOptions>,
 }
 
 impl LinuxExecutor {
-    pub fn new(options: super::ExecOptions) -> Self {
+    pub fn new(options: Arc<ExecOptions>) -> Self {
         Self { options }
     }
 }
@@ -15,13 +16,25 @@ impl LinuxExecutor {
 #[async_trait]
 impl Executor for LinuxExecutor {
     async fn exec(&self) -> anyhow::Result<()> {
-        let output = Command::new("ls").arg("-la").output().await?;
+        let cmds = self.options.processes.lock().expect("fail to read options");
 
-        println!("status: {}", output.status);
-        println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-        println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+        let mut handles = Vec::new();
+        for (_, v) in cmds.iter() {
+            let cmd = String::clone(&v.cmd);
+            let args = Option::clone(&v.args);
+            let mut real_cmd = Command::new(cmd);
+            if args.is_some() {
+                real_cmd.arg(args.unwrap());
+            }
+            println!("{:?}", real_cmd);
+            handles.push(task::spawn(async move {
+                let output = real_cmd.output().unwrap();
+                println!("{:?}", output.status);
+                println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+                println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+            }));
+        }
 
-        println!("{}", self.options.cmd);
         Ok(())
     }
 }

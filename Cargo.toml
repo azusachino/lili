@@ -11,8 +11,11 @@ repository = "https://github.com/azusachino/lili"
 anyhow = "1.0"
 async-trait = "0.1"
 clap = { version = "4.1", features = ["derive"] }
+env_logger = "0.10"
+log = "0.4"
 num_cpus = "1.15"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
+shellexpand = "3.0"
 tokio = { version = "1.25", features = ["full"] }

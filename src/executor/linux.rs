@@ -15,7 +15,7 @@ pub struct LinuxExecutor {
 impl LinuxExecutor {
     pub fn new(options: Arc<ExecOptions>) -> Self {
         let dir = shellexpand::tilde(
-            format!("{}{}{}", LILI_DIR, std::path::MAIN_SEPARATOR, "debug_log").as_str(),
+            format!("{}{}{}", LILI_DIR, std::path::MAIN_SEPARATOR, "debug").as_str(),
         )
         .to_string();
         Self {
@@ -33,21 +33,26 @@ impl Executor for LinuxExecutor {
         for (name, v) in cmds.iter() {
             let cmd = String::clone(&v.cmd);
             let args = Option::clone(&v.args);
-            let log_file = OpenOptions::new()
-                .create(true)
-                .truncate(true)
-                .append(true)
-                .open(format!(
-                    "{}{}{name}.log",
-                    self.log_dir,
-                    std::path::MAIN_SEPARATOR
-                ))
-                .expect(&format!("fail to open {name}.log"));
             let mut real_cmd = Command::new(cmd);
+
             if args.is_some() {
                 real_cmd.arg(args.unwrap());
             }
-            real_cmd.stdout(Stdio::from(log_file));
+
+            if self.options.debug_output.is_some() && self.options.debug_output.unwrap() {
+                let log_file = OpenOptions::new()
+                    .create(true)
+                    .truncate(true)
+                    .append(true)
+                    .open(format!(
+                        "{}{}{name}.log",
+                        self.log_dir,
+                        std::path::MAIN_SEPARATOR
+                    ))
+                    .expect(&format!("fail to open {name}.log"));
+                real_cmd.stdout(Stdio::from(log_file));
+            }
+
             let child = real_cmd.spawn().expect(&format!("fail to start {name}"));
             handles.push(child);
         }

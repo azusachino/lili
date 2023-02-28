@@ -23,7 +23,7 @@ pub struct Process {
 #[derive(Deserialize, Debug)]
 pub struct ExecOptions {
     pub processes: Mutex<HashMap<String, Process>>,
-    pub ignore_output: Option<bool>,
+    pub debug_output: Option<bool>,
 }
 
 impl ExecOptions {
@@ -67,6 +67,8 @@ mod tests {
         io::{BufReader, Read},
     };
 
+    use crate::LILI_DEFAULT_EXEC_CFG;
+
     use super::Executor;
     use anyhow::Result;
 
@@ -92,7 +94,7 @@ mod tests {
 
     #[test]
     fn cfg() {
-        let path = "~/.lili/cfg.yaml";
+        let path = LILI_DEFAULT_EXEC_CFG.as_str();
         let real_path = shellexpand::tilde(path);
         let f = OpenOptions::new()
             .read(true)

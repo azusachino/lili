@@ -4,4 +4,4 @@ processes:
   naive:
     cmd: ~/.bin/naive
     args: ~/.bin/naive.json
-ignore_output: false
+debug_output: true

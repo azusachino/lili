@@ -87,15 +87,7 @@ mod tests {
             message: "hello from tokio".to_owned(),
         };
 
-        let rt = tokio::runtime::Builder::new_multi_thread()
-            .enable_io()
-            .thread_name("tokio-")
-            .build()
-            .expect("fail to create tokio runtime");
-
-        rt.block_on(async move {
-            executor.exec().expect("fail to exec code");
-        });
+        executor.exec().expect("fail to exec code");
     }
 
     #[test]

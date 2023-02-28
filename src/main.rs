@@ -13,8 +13,7 @@ struct Args {
     config: Option<String>,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     env_logger::init();
 
     let args = Args::parse();
@@ -26,7 +25,9 @@ async fn main() -> Result<()> {
     log::debug!("config location is {}", cfg_location);
 
     let options = ExecOptions::from_cfg(&cfg_location);
-    get_executor(Arc::new(options)).exec().await?;
+    get_executor(Arc::new(options))
+        .exec()
+        .expect("fail to execute");
 
     Ok(())
 }

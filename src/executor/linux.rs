@@ -1,38 +1,60 @@
-use std::{process::Command, sync::Arc};
+use crate::LILI_DIR;
 
-use super::{async_trait, ExecOptions, Executor};
-use tokio::task;
+use super::{ExecOptions, Executor};
+use std::{
+    fs::OpenOptions,
+    process::{Command, Stdio},
+    sync::Arc,
+};
 
 pub struct LinuxExecutor {
     options: Arc<ExecOptions>,
+    log_dir: String,
 }
 
 impl LinuxExecutor {
     pub fn new(options: Arc<ExecOptions>) -> Self {
-        Self { options }
+        let dir = shellexpand::tilde(
+            format!("{}{}{}", LILI_DIR, std::path::MAIN_SEPARATOR, "debug_log").as_str(),
+        )
+        .to_string();
+        Self {
+            options,
+            log_dir: dir,
+        }
     }
 }
 
-#[async_trait]
 impl Executor for LinuxExecutor {
-    async fn exec(&self) -> anyhow::Result<()> {
+    fn exec(&self) -> anyhow::Result<()> {
         let cmds = self.options.processes.lock().expect("fail to read options");
 
         let mut handles = Vec::new();
-        for (_, v) in cmds.iter() {
+        for (name, v) in cmds.iter() {
             let cmd = String::clone(&v.cmd);
             let args = Option::clone(&v.args);
+            let log_file = OpenOptions::new()
+                .create(true)
+                .truncate(true)
+                .append(true)
+                .open(format!(
+                    "{}{}{name}.log",
+                    self.log_dir,
+                    std::path::MAIN_SEPARATOR
+                ))
+                .expect(&format!("fail to open {name}.log"));
             let mut real_cmd = Command::new(cmd);
             if args.is_some() {
                 real_cmd.arg(args.unwrap());
             }
-            println!("{:?}", real_cmd);
-            handles.push(task::spawn(async move {
-                let output = real_cmd.output().unwrap();
-                println!("{:?}", output.status);
-                println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-                println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
-            }));
+            real_cmd.stdout(Stdio::from(log_file));
+            let child = real_cmd.spawn().expect(&format!("fail to start {name}"));
+            handles.push(child);
+        }
+
+        // Wait for all the child processes to complete
+        for child in handles.iter_mut() {
+            child.wait().expect("Failed to wait for child process");
         }
 
         Ok(())

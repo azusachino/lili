@@ -5,7 +5,7 @@ mod macos;
 #[cfg(target_os = "windows")]
 mod windows;
 
-use crate::{async_trait, Result};
+use crate::Result;
 use serde::Deserialize;
 use std::{
     collections::HashMap,
@@ -42,10 +42,9 @@ impl ExecOptions {
     }
 }
 
-#[async_trait]
 pub trait Executor {
     // executor
-    async fn exec(&self) -> Result<()>;
+    fn exec(&self) -> Result<()>;
 }
 
 pub fn get_executor(options: Arc<ExecOptions>) -> Box<dyn Executor + Send + 'static> {
@@ -70,15 +69,13 @@ mod tests {
 
     use super::Executor;
     use anyhow::Result;
-    use async_trait::async_trait;
 
     struct TestExecutor {
         message: String,
     }
 
-    #[async_trait]
     impl Executor for TestExecutor {
-        async fn exec(&self) -> Result<()> {
+        fn exec(&self) -> Result<()> {
             println!("{}", self.message);
             Ok(())
         }
@@ -97,7 +94,7 @@ mod tests {
             .expect("fail to create tokio runtime");
 
         rt.block_on(async move {
-            executor.exec().await.expect("fail to exec code");
+            executor.exec().expect("fail to exec code");
         });
     }
 

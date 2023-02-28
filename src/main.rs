@@ -1,18 +1,49 @@
-use lili::Result;
-use tokio::process::Command;
+use clap::{Args, Parser, Subcommand};
+use std::sync::Arc;
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    
-    let output = Command::new("cmd")
-        .args(&["/C", "dir"])
-        .output()
-        .await
-        .expect("failed to execute process");
+use lili::{
+    executor::{get_executor, ExecOptions},
+    Result, LILI_DEFAULT_EXEC_CFG,
+};
 
-    println!("status: {}", output.status);
-    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+#[command(propagate_version = true)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Exec(ExecArgs),
+}
+
+#[derive(Args)]
+struct ExecArgs {
+    #[arg(short, long)]
+    config: Option<String>,
+}
+
+fn main() -> Result<()> {
+    env_logger::init();
+
+    let cli = Cli::parse();
+    match &cli.command {
+        Commands::Exec(args) => {
+            let cfg_location = match args.config {
+                Some(ref c) => c.clone(),
+                None => LILI_DEFAULT_EXEC_CFG.to_owned(),
+            };
+
+            log::debug!("config location is {}", cfg_location);
+
+            let options = ExecOptions::from_cfg(&cfg_location);
+            get_executor(Arc::new(options))
+                .exec()
+                .expect("fail to execute");
+        }
+    }
 
     Ok(())
 }

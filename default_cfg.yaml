@@ -1,0 +1,7 @@
+processes:
+  sync:
+    cmd: syncthing
+  naive:
+    cmd: ~/.bin/naive
+    args: ~/.bin/naive.json
+debug_output: true

@@ -1,4 +1,4 @@
-pub mod executor;
+pub mod cmds;
 
 pub use anyhow::Result;
 pub use std::path::MAIN_SEPARATOR;
@@ -7,9 +7,12 @@ pub use std::path::MAIN_SEPARATOR;
 extern crate lazy_static;
 
 lazy_static! {
-    static ref LILI_DIR: String = format!("~{}.lili", MAIN_SEPARATOR);
+    pub static ref LILI_DIR: String =
+        shellexpand::tilde(&format!("~{}.lili", MAIN_SEPARATOR)).to_string();
     pub static ref LILI_DEFAULT_EXEC_CFG: String = format!(
-        "~{}.lili{}executor{}cfg.yaml",
-        MAIN_SEPARATOR, MAIN_SEPARATOR, MAIN_SEPARATOR
+        "{}{}executor{}cfg.yaml",
+        LILI_DIR.as_str(),
+        MAIN_SEPARATOR,
+        MAIN_SEPARATOR
     );
 }

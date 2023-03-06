@@ -1,8 +1,7 @@
-use clap::{Args, Parser, Subcommand};
-use std::sync::Arc;
+use clap::Parser;
 
 use lili::{
-    executor::{get_executor, ExecOptions},
+    cmds::{Commands, ExecOptions, Executor},
     Result, LILI_DEFAULT_EXEC_CFG,
 };
 
@@ -14,34 +13,23 @@ struct Cli {
     command: Commands,
 }
 
-#[derive(Subcommand)]
-enum Commands {
-    Exec(ExecArgs),
-}
-
-#[derive(Args)]
-struct ExecArgs {
-    #[arg(short, long)]
-    config: Option<String>,
-}
-
-fn main() -> Result<()> {
-    env_logger::init();
+#[tokio::main]
+async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
     match &cli.command {
         Commands::Exec(args) => {
             let cfg_location = match args.config {
-                Some(ref c) => c.clone(),
+                Some(ref c) => shellexpand::tilde(c).to_string(),
                 None => LILI_DEFAULT_EXEC_CFG.to_owned(),
             };
 
-            log::debug!("config location is {}", cfg_location);
+            tracing::debug!("config location is {}", cfg_location);
 
-            let options = ExecOptions::from_cfg(&cfg_location);
-            get_executor(Arc::new(options))
-                .exec()
-                .expect("fail to execute");
+            let options = ExecOptions::from_cfg(&cfg_location)?;
+            let executor = Executor::new(options);
+            executor.exec().await?;
         }
     }
 

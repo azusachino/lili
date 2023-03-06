@@ -1,21 +1,52 @@
+use serde::Deserialize;
 use std::{
+    collections::HashMap,
     fs::OpenOptions,
+    io::BufReader,
     path::MAIN_SEPARATOR,
     process::{Command, Stdio},
-    sync::Arc,
+    sync::Mutex,
 };
 
-use crate::LILI_DIR;
+use crate::{Result, LILI_DIR};
 
-use super::{ExecOptions, Executor};
+#[derive(Deserialize, Debug)]
+pub struct Process {
+    pub cmd: String,
+    pub args: Option<String>,
+}
 
-pub struct WindowsExecutor {
-    options: Arc<ExecOptions>,
+#[derive(Deserialize, Debug)]
+pub struct ExecOptions {
+    pub processes: Mutex<HashMap<String, Process>>,
+    pub debug_output: Option<bool>,
+}
+
+pub struct Executor {
+    options: ExecOptions,
     log_dir: String,
 }
 
-impl WindowsExecutor {
-    pub fn new(options: Arc<ExecOptions>) -> Self {
+impl ExecOptions {
+    /**
+     * load exec options from cfg
+     *
+     * @param cfg_path should be absolute path
+     */
+    pub fn from_cfg(cfg_path: &str) -> Result<Self> {
+        let f = OpenOptions::new()
+            .read(true)
+            .write(false)
+            .append(false)
+            .open(cfg_path)?;
+
+        let buf_r = BufReader::new(&f);
+        Ok(serde_yaml::from_reader(buf_r)?)
+    }
+}
+
+impl Executor {
+    pub fn new(options: ExecOptions) -> Self {
         let path = format!("{}{}debug", LILI_DIR.as_str(), MAIN_SEPARATOR);
         let dir = shellexpand::tilde(path.as_str()).to_string();
         Self {
@@ -23,10 +54,8 @@ impl WindowsExecutor {
             log_dir: dir,
         }
     }
-}
 
-impl Executor for WindowsExecutor {
-    fn exec(&self) -> anyhow::Result<()> {
+    pub async fn exec(&self) -> Result<()> {
         let cmds = self.options.processes.lock().expect("fail to read options");
 
         let mut handles = Vec::new();
@@ -66,16 +95,27 @@ impl Executor for WindowsExecutor {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{
+        fs::OpenOptions,
+        io::{BufReader, Read},
+    };
 
-    use crate::executor::{ExecOptions, Executor};
-
-    use super::WindowsExecutor;
+    use crate::LILI_DEFAULT_EXEC_CFG;
 
     #[test]
-    fn test() {
-        let op = ExecOptions::from_cfg("cfg_path");
-        let we = WindowsExecutor::new(Arc::new(op));
-        we.exec().expect("fail to exec");
+    fn cfg() {
+        let path = LILI_DEFAULT_EXEC_CFG.as_str();
+        let real_path = shellexpand::tilde(path);
+        let f = OpenOptions::new()
+            .read(true)
+            .write(false)
+            .append(false)
+            .open(real_path.to_string())
+            .expect("fail to open config file");
+
+        let mut buf = String::new();
+        let mut buf_r = BufReader::new(&f);
+        buf_r.read_to_string(&mut buf).expect("fail to read");
+        println!("{}", buf);
     }
 }

@@ -1,12 +1,9 @@
 use serde::Deserialize;
 use std::{
-    collections::HashMap,
-    fs::OpenOptions,
-    io::BufReader,
-    path::MAIN_SEPARATOR,
-    process::{Command, Stdio},
+    collections::HashMap, fs::OpenOptions, io::BufReader, path::MAIN_SEPARATOR, process::Stdio,
     sync::Mutex,
 };
+use tokio::process::Command;
 
 use crate::{Result, LILI_DIR};
 
@@ -48,10 +45,9 @@ impl ExecOptions {
 impl Executor {
     pub fn new(options: ExecOptions) -> Self {
         let path = format!("{}{}debug", LILI_DIR.as_str(), MAIN_SEPARATOR);
-        let dir = shellexpand::tilde(path.as_str()).to_string();
         Self {
             options,
-            log_dir: dir,
+            log_dir: path,
         }
     }
 
@@ -64,8 +60,8 @@ impl Executor {
             let args = Option::clone(&v.args);
             let mut real_cmd = Command::new(cmd);
 
-            if args.is_some() {
-                let arg = shellexpand::tilde(args.unwrap().as_str()).to_string();
+            if let Some(args) = args {
+                let arg = shellexpand::tilde(&args).to_string();
                 real_cmd.arg(arg);
             }
 
@@ -75,18 +71,19 @@ impl Executor {
                     .create(true)
                     .write(true)
                     .truncate(true)
-                    .open(final_path)
-                    .expect(&format!("fail to open {name}.log"));
+                    .open(final_path)?;
                 real_cmd.stdout(Stdio::from(log_file));
             }
 
-            let child = real_cmd.spawn().expect(&format!("fail to start {name}"));
+            let child = real_cmd.spawn()?;
             handles.push(child);
         }
 
+        tracing::info!("all cmds submited to executor");
+
         // Wait for all the child processes to complete
         for child in handles.iter_mut() {
-            child.wait().expect("Failed to wait for child process");
+            child.wait().await?;
         }
 
         Ok(())
@@ -105,12 +102,11 @@ mod tests {
     #[test]
     fn cfg() {
         let path = LILI_DEFAULT_EXEC_CFG.as_str();
-        let real_path = shellexpand::tilde(path);
         let f = OpenOptions::new()
             .read(true)
             .write(false)
             .append(false)
-            .open(real_path.to_string())
+            .open(path.to_owned())
             .expect("fail to open config file");
 
         let mut buf = String::new();

@@ -28,8 +28,7 @@ async fn main() -> Result<()> {
             tracing::debug!("config location is {}", cfg_location);
 
             let options = ExecOptions::from_cfg(&cfg_location)?;
-            let executor = Executor::new(options);
-            executor.exec().await?;
+            Executor::new(options).exec().await?;
         }
     }
 

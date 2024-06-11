@@ -7,15 +7,22 @@ use std::{
     sync::Arc,
 };
 
-pub struct LinuxExecutor {
+// default executor implementation
+pub struct DefaultExecutor {
     options: Arc<ExecOptions>,
     log_dir: String,
 }
 
-impl LinuxExecutor {
+impl DefaultExecutor {
     pub fn new(options: Arc<ExecOptions>) -> Self {
         let dir = shellexpand::tilde(
-            format!("{}{}{}", LILI_DIR, std::path::MAIN_SEPARATOR, "debug").as_str(),
+            format!(
+                "{}{}{}",
+                LILI_DIR.as_str(),
+                std::path::MAIN_SEPARATOR,
+                "debug"
+            )
+            .as_str(),
         )
         .to_string();
         Self {
@@ -25,7 +32,7 @@ impl LinuxExecutor {
     }
 }
 
-impl Executor for LinuxExecutor {
+impl Executor for DefaultExecutor {
     fn exec(&self) -> anyhow::Result<()> {
         let cmds = self.options.processes.lock().expect("fail to read options");
 

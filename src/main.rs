@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use lili::{
     executor::{get_executor, ExecOptions},
-    Result, LILI_DEFAULT_EXEC_CFG,
+    Result, LILI_DEFAULT_CFG,
 };
 
 #[derive(Parser)]
@@ -33,7 +33,7 @@ fn main() -> Result<()> {
         Commands::Exec(args) => {
             let cfg_location = match args.config {
                 Some(ref c) => c.clone(),
-                None => LILI_DEFAULT_EXEC_CFG.to_owned(),
+                None => LILI_DEFAULT_CFG.to_owned(),
             };
 
             log::debug!("config location is {}", cfg_location);

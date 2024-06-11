@@ -1,11 +1,7 @@
-#[cfg(target_os = "linux")]
-mod linux;
-#[cfg(target_os = "macos")]
-mod macos;
-#[cfg(target_os = "windows")]
-mod windows;
+mod default_executor;
 
 use crate::Result;
+use default_executor::DefaultExecutor;
 use serde::Deserialize;
 use std::{
     collections::HashMap,
@@ -43,21 +39,11 @@ impl ExecOptions {
 }
 
 pub trait Executor {
-    // executor
     fn exec(&self) -> Result<()>;
 }
 
 pub fn get_executor(options: Arc<ExecOptions>) -> Box<dyn Executor + Send + 'static> {
-    #[cfg(target_os = "windows")]
-    {
-        use windows::WindowsExecutor;
-        Box::new(WindowsExecutor::new(options))
-    }
-    #[cfg(target_os = "linux")]
-    {
-        use linux::LinuxExecutor;
-        Box::new(LinuxExecutor::new(options))
-    }
+    Box::new(DefaultExecutor::new(options))
 }
 
 #[cfg(test)]
@@ -67,7 +53,7 @@ mod tests {
         io::{BufReader, Read},
     };
 
-    use crate::LILI_DEFAULT_EXEC_CFG;
+    use crate::LILI_DEFAULT_CFG;
 
     use super::Executor;
     use anyhow::Result;
@@ -88,13 +74,12 @@ mod tests {
         let executor = TestExecutor {
             message: "hello from tokio".to_owned(),
         };
-
         executor.exec().expect("fail to exec code");
     }
 
     #[test]
     fn cfg() {
-        let path = LILI_DEFAULT_EXEC_CFG.as_str();
+        let path = LILI_DEFAULT_CFG.as_str();
         let real_path = shellexpand::tilde(path);
         let f = OpenOptions::new()
             .read(true)

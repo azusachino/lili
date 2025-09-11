@@ -9,26 +9,25 @@ repository = "https://github.com/azusachino/lili"
 
 [dependencies]
 anyhow = "1"
-thiserror = "1"
+thiserror = "2"
 
 # cli
 clap = { version = "4", features = ["derive"] }
-
-# log
-log = "0.4"
-env_logger = "0.11"
+toml = "0.9"
 
 # serde
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yaml = "0.9"
 
 # async
 futures = "0.3"
 tokio = { version = "1", features = ["full"] }
-async-trait = "0.1"
 
 # utils
 num_cpus = "1"
-lazy_static = "1.4"
+lazy_static = "1.5"
 shellexpand = "3.1"
+
+# logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

@@ -1,0 +1,6 @@
+[tasks.dev]
+description = "Run development server"
+run = "cargo run"
+
+[tasks.clean]
+run = "cargo clean"
